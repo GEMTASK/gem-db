@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gemdb"
+name = "gem-db"
 version = "0.1.0"
 dependencies = [
  "ferris-says",
