@@ -49,19 +49,35 @@ impl Table {
         let ptr: *mut u8 = self.records.as_mut_ptr();
 
         unsafe {
-            let offset = *ptr.add(field_index * 4) as usize;
+            let offset = *ptr.add(field_index * 2) as usize;
 
             *(ptr.add(offset) as *mut T) = value;
         }
     }
 
-    pub fn get_field<T: Copy>(&mut self, field_index: usize) -> T {
-        let ptr: *mut u8 = self.records.as_mut_ptr();
+    pub fn get_field<T: Copy>(&self, field_index: usize) -> T {
+        let ptr: *const u8 = self.records.as_ptr();
 
         unsafe {
-            let offset = *ptr.add(field_index * 4) as usize;
+            let offset = *ptr.add(field_index * 2) as usize;
 
             return *(ptr.add(offset) as *mut T);
+        }
+    }
+
+    pub fn select(&self) {
+        let ptr: *const u8 = self.records.as_ptr();
+
+        unsafe {
+            for (i, field) in self.fields.iter().enumerate() {
+                let offset = *ptr.add(i * 2) as usize;
+
+                match field.kind {
+                    FieldType::Int32 => println!("> {}", *ptr.add(offset) as i32),
+                    FieldType::Int64 => println!("> {}", *ptr.add(offset) as i64),
+                    FieldType::String => println!("> {}", *ptr.add(offset) as i32),
+                }
+            }
         }
     }
 }
@@ -141,7 +157,9 @@ fn main() {
 
     println!("{}", table.get_field::<i32>(0));
 
-    table.set_field::<i32>(0, 100);
+    // table.set_field::<i32>(0, 100);
 
-    println!("{}", table.get_field::<i32>(0));
+    println!("=====\n{}", table.get_field::<i32>(0));
+
+    table.select();
 }
