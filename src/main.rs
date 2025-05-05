@@ -45,23 +45,23 @@ impl Table {
         }
     }
 
-    pub fn set_field(&mut self, field_index: usize, value: i32) {
+    pub fn set_field<T: Copy>(&mut self, field_index: usize, value: T) {
         let ptr: *mut u8 = self.records.as_mut_ptr();
 
         unsafe {
             let offset = *ptr.add(field_index * 4) as usize;
 
-            *(ptr.add(offset) as *mut i32) = value;
+            *(ptr.add(offset) as *mut T) = value;
         }
     }
 
-    pub fn get_field(&mut self, field_index: usize) -> i32 {
+    pub fn get_field<T: Copy>(&mut self, field_index: usize) -> T {
         let ptr: *mut u8 = self.records.as_mut_ptr();
 
         unsafe {
             let offset = *ptr.add(field_index * 4) as usize;
 
-            return *(ptr.add(offset) as *mut i32);
+            return *(ptr.add(offset) as *mut T);
         }
     }
 }
@@ -139,7 +139,9 @@ fn main() {
 
     println!("{:#?}", table);
 
-    table.set_field(0, 100);
+    println!("{}", table.get_field::<i32>(0));
 
-    println!("{}", table.get_field(0));
+    table.set_field::<i32>(0, 100);
+
+    println!("{}", table.get_field::<i32>(0));
 }
