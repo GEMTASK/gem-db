@@ -34,20 +34,17 @@ impl Table {
         Self {
             name: name.to_string(),
             schema,
-            data: vec![0u8; 16],
+            data: vec![0u8; 32],
         }
     }
 
     pub fn set_field(&mut self, field_index: usize, value: i32) {
         let ptr: *mut u8 = self.data.as_mut_ptr();
-        let mut offset: usize = 0;
 
-        for i in 0..field_index {
-            match self.schema.fields[i].kind {
-                FieldType::Int32 => offset += 4,
-                FieldType::Int64 => offset += 4,
-                FieldType::String => offset += 4,
-            }
+        unsafe {
+            let offset = *ptr.add(field_index * 4) as usize;
+
+            *(ptr.add(offset) as *mut i32) = value;
         }
     }
 }
@@ -73,21 +70,8 @@ fn main() {
     let mut table = Table::new("items", schema);
 
     let ptr: *mut u8 = table.data.as_mut_ptr();
-    let mut offset: usize = 0;
-
-    /*
-        Indexing into field
-        Very large string would require 2 byte indexes
-        Separate file for variable size strings?
-
-        Field 0 => 0
-        Field 1 => 4
-        Field 2 => 8
-
-        11 = 4
-        1111 = 16
-        11111111 = 256
-    */
+    let mut offsets: Vec<i32> = vec![];
+    let mut offset: usize = table.schema.fields.len() * 4;
 
     for (i, field) in table.schema.fields.iter().enumerate() {
         unsafe {
@@ -95,12 +79,16 @@ fn main() {
                 FieldType::Int32 => {
                     offset += (4 - offset % 4) % 4;
 
+                    offsets.push(offset as i32);
+
                     *(ptr.add(offset) as *mut i32) = 255;
 
                     offset += 4;
                 }
                 FieldType::Int64 => {
                     offset += (8 - offset % 8) % 8;
+
+                    offsets.push(offset as i32);
 
                     *(ptr.add(offset) as *mut i64) = 65535;
 
@@ -111,12 +99,24 @@ fn main() {
 
                     let value = "À";
 
+                    offsets.push(offset as i32);
+
                     *(ptr.add(offset) as *mut i16) = value.len() as i16;
                     std::ptr::copy_nonoverlapping(value.as_ptr(), ptr.add(offset + 2), value.len());
 
                     offset += 2 + value.len();
                 }
             }
+        }
+    }
+
+    offset = 0;
+
+    for (i, field) in table.schema.fields.iter().enumerate() {
+        unsafe {
+            *(ptr.add(offset) as *mut i32) = offsets[i];
+
+            offset += 4;
         }
     }
 
