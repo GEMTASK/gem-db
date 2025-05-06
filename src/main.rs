@@ -4,7 +4,7 @@
 mod table;
 use table::{Column, Table, Type, Value};
 
-enum Type2<'a> {
+pub enum Type2<'a> {
     Int32,
     Relation { table: &'a Table2<'a> },
 }
@@ -14,13 +14,13 @@ pub enum Value2 {
     Relation(i32),
 }
 
-pub struct Column2 {
+pub struct Column2<'a> {
     pub name: String,
-    pub kind: Type,
+    pub kind: Type2<'a>,
 }
 
-struct Table2<'a> {
-    pub columns: Vec<Type2<'a>>,
+pub struct Table2<'a> {
+    pub columns: Vec<Column2<'a>>,
 }
 
 impl Table2<'_> {
@@ -29,11 +29,17 @@ impl Table2<'_> {
 
 fn main() {
     let mut xxx = Table2 {
-        columns: vec![Type2::Int32],
+        columns: vec![Column2 {
+            name: "items".to_string(),
+            kind: Type2::Int32,
+        }],
     };
 
     let y = Table2 {
-        columns: vec![Type2::Relation { table: &xxx }],
+        columns: vec![Column2 {
+            name: "comments".to_string(),
+            kind: Type2::Relation { table: &xxx },
+        }],
     };
 
     xxx.insert(&[Value2::Int32(5)]);
