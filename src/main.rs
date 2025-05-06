@@ -4,7 +4,24 @@
 mod table;
 use table::{Column, Table, Type, Value};
 
+enum Type2<'a> {
+    Int32,
+    Relation { table: &'a Table2<'a> },
+}
+
+struct Table2<'a> {
+    pub columns: Vec<Type2<'a>>,
+}
+
 fn main() {
+    let x = Table2 {
+        columns: vec![Type2::Int32],
+    };
+
+    let y = Table2 {
+        columns: vec![Type2::Relation { table: &x }],
+    };
+
     let mut items_table = Table::new(
         "items",
         vec![
@@ -39,5 +56,5 @@ fn main() {
 
     items_table.select();
 
-    println!("{:#?}", items_table);
+    // println!("{:#?}", items_table);
 }
