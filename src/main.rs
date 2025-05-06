@@ -26,6 +26,7 @@ struct Table {
     name: String,
     fields: Vec<Field>,
     records: Vec<u8>,
+    field_offsets: Vec<usize>,
     storage: Vec<u8>,
     storage_offset: i32,
 }
@@ -36,10 +37,34 @@ struct Storage {
 
 impl Table {
     pub fn new(name: &str, fields: Vec<Field>) -> Table {
+        let mut field_offsets: Vec<usize> = vec![0; fields.len()];
+        let mut offset: usize = 0;
+
+        for (i, field) in fields.iter().enumerate() {
+            match field.kind {
+                FieldType::Int32 => {
+                    offset += (4 - offset % 4) % 4;
+                    field_offsets[i] = offset;
+                    offset += 4;
+                }
+                FieldType::Int64 => {
+                    offset += (8 - offset % 8) % 8;
+                    field_offsets[i] = offset;
+                    offset += 8;
+                }
+                FieldType::String => {
+                    offset += (4 - offset % 4) % 4;
+                    field_offsets[i] = offset;
+                    offset += 4;
+                }
+            }
+        }
+
         Self {
             name: name.to_string(),
             fields,
-            records: vec![0u8; 24],
+            records: vec![0u8; 16],
+            field_offsets,
             storage: vec![0u8; 16],
             storage_offset: 0,
         }
@@ -49,9 +74,7 @@ impl Table {
         let ptr: *mut u8 = self.records.as_mut_ptr();
 
         unsafe {
-            let offset = *ptr.add(field_index * 2) as usize;
-
-            *(ptr.add(offset) as *mut T) = value;
+            *(ptr.add(self.field_offsets[field_index]) as *mut T) = value;
         }
     }
 
@@ -59,9 +82,7 @@ impl Table {
         let ptr: *const u8 = self.records.as_ptr();
 
         unsafe {
-            let offset = *ptr.add(field_index * 2) as usize;
-
-            return *(ptr.add(offset) as *mut T);
+            return *(ptr.add(self.field_offsets[field_index]) as *const T);
         }
     }
 
@@ -70,12 +91,18 @@ impl Table {
 
         unsafe {
             for (i, field) in self.fields.iter().enumerate() {
-                let offset = *ptr.add(i * 2) as usize;
+                let offset = self.field_offsets[i] as usize;
 
                 match field.kind {
-                    FieldType::Int32 => println!("> {}", *ptr.add(offset) as i32),
-                    FieldType::Int64 => println!("> {}", *ptr.add(offset) as i64),
-                    FieldType::String => println!("> {}", *ptr.add(offset) as i32),
+                    FieldType::Int32 => {
+                        println!("> {}", *(ptr.add(offset) as *const i32));
+                    }
+                    FieldType::Int64 => {
+                        println!("> {}", *(ptr.add(offset) as *const i64))
+                    }
+                    FieldType::String => {
+                        println!("> {}", *(ptr.add(offset) as *const i32))
+                    }
                 }
             }
         }
@@ -102,8 +129,7 @@ fn main() {
 
     let records_ptr: *mut u8 = table.records.as_mut_ptr();
     let storage_ptr: *mut u8 = table.storage.as_mut_ptr();
-    let mut offsets: Vec<i16> = vec![];
-    let mut offset: usize = table.fields.len() * 2;
+    let mut offset: usize = 0;
 
     for (i, field) in table.fields.iter().enumerate() {
         unsafe {
@@ -111,16 +137,12 @@ fn main() {
                 FieldType::Int32 => {
                     offset += (4 - offset % 4) % 4;
 
-                    offsets.push(offset as i16);
-
                     *(records_ptr.add(offset) as *mut i32) = 255;
 
                     offset += 4;
                 }
                 FieldType::Int64 => {
                     offset += (8 - offset % 8) % 8;
-
-                    offsets.push(offset as i16);
 
                     *(records_ptr.add(offset) as *mut i64) = 65535;
 
@@ -130,8 +152,6 @@ fn main() {
                     offset += (4 - offset % 4) % 4;
 
                     let value = "À";
-
-                    offsets.push(offset as i16);
 
                     *(records_ptr.add(offset) as *mut i32) = 0;
                     *(storage_ptr.add(0) as *mut i16) = value.len() as i16;
@@ -143,23 +163,13 @@ fn main() {
         }
     }
 
-    offset = 0;
-
-    for (i, field) in table.fields.iter().enumerate() {
-        unsafe {
-            *(records_ptr.add(offset) as *mut i16) = offsets[i];
-
-            offset += 2;
-        }
-    }
-
     println!("{:#?}", table);
 
     println!("{}", table.get_field::<i32>(0));
+    println!("{}", table.get_field::<i32>(1));
+    println!("{}", table.get_field::<i32>(2));
 
     // table.set_field::<i32>(0, 100);
-
-    println!("=====\n{}", table.get_field::<i32>(0));
 
     table.select();
 }
