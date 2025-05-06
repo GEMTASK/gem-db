@@ -27,8 +27,9 @@ struct Table {
     fields: Vec<Field>,
     records: Vec<u8>,
     field_offsets: Vec<usize>,
+    row_width: u16,
     storage: Vec<u8>,
-    storage_offset: i32,
+    next_storage_offset: i32,
 }
 
 struct Storage {
@@ -60,13 +61,16 @@ impl Table {
             }
         }
 
+        println!("{}", offset);
+
         Self {
             name: name.to_string(),
             fields,
             records: vec![0u8; 16],
             field_offsets,
-            storage: vec![0u8; 16],
-            storage_offset: 0,
+            row_width: offset as u16,
+            storage: vec![0u8; 8],
+            next_storage_offset: 0,
         }
     }
 
