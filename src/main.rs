@@ -9,18 +9,36 @@ enum Type2<'a> {
     Relation { table: &'a Table2<'a> },
 }
 
+pub enum Value2 {
+    Int32(i32),
+    Relation(i32),
+}
+
+pub struct Column2 {
+    pub name: String,
+    pub kind: Type,
+}
+
 struct Table2<'a> {
     pub columns: Vec<Type2<'a>>,
 }
 
+impl Table2<'_> {
+    pub fn insert(&mut self, values: &[Value2]) {}
+}
+
 fn main() {
-    let x = Table2 {
+    let mut xxx = Table2 {
         columns: vec![Type2::Int32],
     };
 
     let y = Table2 {
-        columns: vec![Type2::Relation { table: &x }],
+        columns: vec![Type2::Relation { table: &xxx }],
     };
+
+    xxx.insert(&[Value2::Int32(5)]);
+
+    //
 
     let mut items_table = Table::new(
         "items",
