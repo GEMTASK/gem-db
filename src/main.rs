@@ -31,10 +31,10 @@ struct Schema {
 struct Table {
     name: String,
     fields: Vec<Field>,
-    records: Vec<u8>,
-    next_records_offset: usize,
     field_offsets: Vec<usize>,
     row_width: u16,
+    records: Vec<u8>,
+    next_records_offset: usize,
     storage: Vec<u8>,
     next_storage_offset: usize,
 }
@@ -71,10 +71,10 @@ impl Table {
         Self {
             name: name.to_string(),
             fields,
-            records: vec![0u8; 32],
-            next_records_offset: 16,
             field_offsets,
             row_width: offset as u16,
+            records: vec![0u8; 32],
+            next_records_offset: 16,
             storage: vec![0u8; 8],
             next_storage_offset: 4,
         }
