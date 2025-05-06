@@ -3,12 +3,14 @@ pub enum Type {
     Int32,
     Int64,
     String,
+    Relation { table: Table },
 }
 
 pub enum Value {
     Int32(i32),
     Int64(i64),
     String(String),
+    Relation(i32),
 }
 
 #[derive(Debug)]
@@ -17,9 +19,13 @@ pub struct Column {
     pub kind: Type,
 }
 
-#[derive(Debug)]
-struct Schema {
-    columns: Vec<Column>,
+impl Column {
+    pub fn new(name: &str, kind: Type) -> Column {
+        Self {
+            name: name.to_string(),
+            kind,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -44,7 +50,7 @@ impl Table {
         let mut offset: usize = 0;
 
         for (i, field) in columns.iter().enumerate() {
-            match field.kind {
+            match &field.kind {
                 Type::Int32 => {
                     offset += (4 - offset % 4) % 4;
                     column_offsets[i] = offset;
@@ -60,6 +66,9 @@ impl Table {
                     column_offsets[i] = offset;
                     offset += 4;
                 }
+                Type::Relation { table } => {
+                    //
+                }
             }
         }
 
@@ -72,14 +81,6 @@ impl Table {
             next_records_offset: 0,
             storage: vec![0u8; 16],
             next_storage_offset: 0,
-        }
-    }
-
-    pub fn set_field<T: Copy>(&mut self, field_index: usize, value: T) {
-        let ptr: *mut u8 = self.records.as_mut_ptr();
-
-        unsafe {
-            *(ptr.add(self.column_offsets[field_index]) as *mut T) = value;
         }
     }
 
@@ -117,6 +118,9 @@ impl Table {
 
                     self.next_storage_offset += value.len() + 2;
                 },
+                Value::Relation(value) => {
+                    //
+                }
             }
         }
 
@@ -144,7 +148,7 @@ impl Table {
                 let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
 
                 unsafe {
-                    match field.kind {
+                    match &field.kind {
                         Type::Int32 => {
                             print!("{:<12}", *(records_ptr.add(offset) as *const i32));
                         }
@@ -160,10 +164,10 @@ impl Table {
                             let slice =
                                 std::slice::from_raw_parts(string_ptr.add(2), length.into());
 
-                            // let str = str::from_utf8_unchecked(slice);
-                            let string = String::from_utf8_unchecked(slice.to_vec());
-
-                            print!("{:<12}", string);
+                            print!("{:<12}", std::str::from_utf8_unchecked(slice));
+                        }
+                        Type::Relation { table } => {
+                            //
                         }
                     }
                 }

@@ -2,26 +2,17 @@
 #![allow(unused_variables)]
 
 mod table;
-
 use table::{Column, Table, Type, Value};
 
 fn main() {
-    let columns = vec![
-        Column {
-            name: "id".to_string(),
-            kind: Type::Int32,
-        },
-        table::Column {
-            name: "title".to_string(),
-            kind: Type::String,
-        },
-        Column {
-            name: "estimate".to_string(),
-            kind: Type::Int64,
-        },
-    ];
-
-    let mut table = Table::new("items", columns);
+    let mut table = Table::new(
+        "items",
+        vec![
+            Column::new("id", Type::Int32),
+            Column::new("title", Type::String),
+            Column::new("estimate", Type::Int64),
+        ],
+    );
 
     table.select();
 
