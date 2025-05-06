@@ -68,8 +68,6 @@ impl Table {
             }
         }
 
-        println!("{}", offset);
-
         Self {
             name: name.to_string(),
             fields,
@@ -131,25 +129,43 @@ impl Table {
     }
 
     pub fn select(&self) {
-        let ptr: *const u8 = self.records.as_ptr();
+        let records_ptr: *const u8 = self.records.as_ptr();
+
+        for (i, field) in self.fields.iter().enumerate() {
+            print!("{:<12}", field.name);
+        }
+
+        println!();
+
+        for (i, field) in self.fields.iter().enumerate() {
+            print!("{:<12}", "-".repeat(11));
+        }
+
+        println!();
 
         unsafe {
-            for (i, field) in self.fields.iter().enumerate() {
-                let offset = self.field_offsets[i] as usize;
+            for j in 0..self.next_records_offset / self.row_width as usize {
+                for (i, field) in self.fields.iter().enumerate() {
+                    let offset = self.row_width as usize * j + self.field_offsets[i] as usize;
 
-                match field.kind {
-                    FieldType::Int32 => {
-                        println!("> {}", *(ptr.add(offset) as *const i32));
-                    }
-                    FieldType::Int64 => {
-                        println!("> {}", *(ptr.add(offset) as *const i64))
-                    }
-                    FieldType::String => {
-                        println!("> {}", *(ptr.add(offset) as *const i32))
+                    match field.kind {
+                        FieldType::Int32 => {
+                            print!("{:<12}", *(records_ptr.add(offset) as *const i32));
+                        }
+                        FieldType::Int64 => {
+                            print!("{:<12}", *(records_ptr.add(offset) as *const i64))
+                        }
+                        FieldType::String => {
+                            print!("{:<12}", *(records_ptr.add(offset) as *const i32))
+                        }
                     }
                 }
+
+                println!();
             }
         }
+
+        println!();
     }
 }
 
@@ -208,19 +224,19 @@ fn main() {
         }
     }
 
-    println!("{}", table.get_field::<i32>(0));
-    println!("{}", table.get_field::<i32>(1));
-    println!("{}", table.get_field::<i32>(2));
-
-    // table.set_field::<i32>(0, 100);
+    // println!("{}", table.get_field::<i32>(0));
+    // println!("{}", table.get_field::<i32>(1));
+    // println!("{}", table.get_field::<i64>(2));
 
     table.select();
 
     table.insert(&[
-        Value::Int32(255),
-        Value::String("À".to_string()),
-        Value::Int64(65535),
+        Value::Int32(10),
+        Value::String("A".to_string()),
+        Value::Int64(20),
     ]);
+
+    table.select();
 
     println!("{:#?}", table);
 }
