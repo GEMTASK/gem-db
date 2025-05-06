@@ -10,6 +10,12 @@ enum FieldType {
     String,
 }
 
+enum Value {
+    Int32(i32),
+    Int64(i64),
+    String(String),
+}
+
 #[derive(Debug)]
 struct Field {
     name: String,
@@ -26,10 +32,11 @@ struct Table {
     name: String,
     fields: Vec<Field>,
     records: Vec<u8>,
+    next_records_offset: usize,
     field_offsets: Vec<usize>,
     row_width: u16,
     storage: Vec<u8>,
-    next_storage_offset: i32,
+    next_storage_offset: usize,
 }
 
 struct Storage {
@@ -66,11 +73,12 @@ impl Table {
         Self {
             name: name.to_string(),
             fields,
-            records: vec![0u8; 16],
+            records: vec![0u8; 32],
+            next_records_offset: 16,
             field_offsets,
             row_width: offset as u16,
             storage: vec![0u8; 8],
-            next_storage_offset: 0,
+            next_storage_offset: 4,
         }
     }
 
@@ -88,6 +96,38 @@ impl Table {
         unsafe {
             return *(ptr.add(self.field_offsets[field_index]) as *const T);
         }
+    }
+
+    pub fn insert(&mut self, values: &[Value]) {
+        let records_ptr: *mut u8 = self.records.as_mut_ptr();
+        let storage_ptr: *mut u8 = self.storage.as_mut_ptr();
+
+        for (i, field_offset) in self.field_offsets.iter().enumerate() {
+            let offset = self.next_records_offset + field_offset;
+
+            match &values[i] {
+                Value::Int32(value) => unsafe {
+                    *(records_ptr.add(offset) as *mut i32) = *value;
+                },
+                Value::Int64(value) => unsafe {
+                    *(records_ptr.add(offset) as *mut i64) = *value;
+                },
+                Value::String(value) => unsafe {
+                    *(records_ptr.add(offset) as *mut i32) = self.next_storage_offset as i32;
+
+                    *(storage_ptr.add(self.next_storage_offset) as *mut i16) = value.len() as i16;
+                    std::ptr::copy_nonoverlapping(
+                        value.as_ptr(),
+                        storage_ptr.add(self.next_storage_offset + 2),
+                        value.len(),
+                    );
+
+                    self.next_storage_offset += value.len() + 2;
+                },
+            }
+        }
+
+        self.next_records_offset += self.row_width as usize;
     }
 
     pub fn select(&self) {
@@ -133,6 +173,7 @@ fn main() {
 
     let records_ptr: *mut u8 = table.records.as_mut_ptr();
     let storage_ptr: *mut u8 = table.storage.as_mut_ptr();
+
     let mut offset: usize = 0;
 
     for (i, field) in table.fields.iter().enumerate() {
@@ -167,8 +208,6 @@ fn main() {
         }
     }
 
-    println!("{:#?}", table);
-
     println!("{}", table.get_field::<i32>(0));
     println!("{}", table.get_field::<i32>(1));
     println!("{}", table.get_field::<i32>(2));
@@ -176,4 +215,12 @@ fn main() {
     // table.set_field::<i32>(0, 100);
 
     table.select();
+
+    table.insert(&[
+        Value::Int32(255),
+        Value::String("À".to_string()),
+        Value::Int64(65535),
+    ]);
+
+    println!("{:#?}", table);
 }
