@@ -69,9 +69,9 @@ impl Table {
             column_offsets,
             row_width: offset as u16,
             records: vec![0u8; 32],
-            next_records_offset: 16,
-            storage: vec![0u8; 8],
-            next_storage_offset: 4,
+            next_records_offset: 0,
+            storage: vec![0u8; 16],
+            next_storage_offset: 0,
         }
     }
 
@@ -125,6 +125,7 @@ impl Table {
 
     pub fn select(&self) {
         let records_ptr: *const u8 = self.records.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr();
 
         for (i, field) in self.columns.iter().enumerate() {
             print!("{:<12}", field.name);
@@ -138,26 +139,37 @@ impl Table {
 
         println!();
 
-        unsafe {
-            for j in 0..self.next_records_offset / self.row_width as usize {
-                for (i, field) in self.columns.iter().enumerate() {
-                    let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
+        for j in 0..self.next_records_offset / self.row_width as usize {
+            for (i, field) in self.columns.iter().enumerate() {
+                let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
 
+                unsafe {
                     match field.kind {
                         Type::Int32 => {
                             print!("{:<12}", *(records_ptr.add(offset) as *const i32));
                         }
                         Type::Int64 => {
-                            print!("{:<12}", *(records_ptr.add(offset) as *const i64))
+                            print!("{:<12}", *(records_ptr.add(offset) as *const i64));
                         }
                         Type::String => {
-                            print!("{:<12}", *(records_ptr.add(offset) as *const i32))
+                            let string: String;
+
+                            let string_ptr = storage_ptr.add(*(records_ptr.add(offset)) as usize);
+                            let length = *(string_ptr as *const u16);
+
+                            let slice =
+                                std::slice::from_raw_parts(string_ptr.add(2), length.into());
+
+                            // let str = str::from_utf8_unchecked(slice);
+                            let string = String::from_utf8_unchecked(slice.to_vec());
+
+                            print!("{:<12}", string);
                         }
                     }
                 }
-
-                println!();
             }
+
+            println!();
         }
 
         println!();
