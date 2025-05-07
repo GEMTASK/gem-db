@@ -19,12 +19,23 @@ pub struct Column2<'a> {
     pub kind: Type2<'a>,
 }
 
+impl<'a> Column2<'a> {
+    pub fn new(name: &'a str, kind: Type2<'a>) -> Column2<'a> {
+        Self {
+            name: name.to_string(),
+            kind,
+        }
+    }
+}
+
 pub struct Table2<'a> {
     pub columns: Vec<Column2<'a>>,
 }
 
-impl Table2<'_> {
-    pub fn insert(&mut self, values: &[Value2]) {}
+impl<'a> Table2<'a> {
+    pub fn insert(&mut self, values: &[Value2]) {
+        //
+    }
 }
 
 fn main() {
@@ -36,10 +47,7 @@ fn main() {
     };
 
     let y = Table2 {
-        columns: vec![Column2 {
-            name: "comments".to_string(),
-            kind: Type2::Relation { table: &xxx },
-        }],
+        columns: vec![Column2::new("comments", Type2::Relation { table: &xxx })],
     };
 
     xxx.insert(&[Value2::Int32(5)]);
