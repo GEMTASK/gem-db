@@ -57,12 +57,12 @@ fn main() {
     // println!("{:#?}", (*items_table_rc.borrow_mut()));
 
     (*comments_table_rc.borrow_mut()).insert(&[
-        Value::Int32(10),
+        Value::Int32(100),
         Value::Relation(255),
-        Value::Int32(20),
+        Value::Int32(200),
     ]);
 
-    (*items_table_rc.borrow_mut()).select();
+    (*items_table_rc.borrow_mut()).print();
 
     // println!("{:#?}", comments_table);
 }

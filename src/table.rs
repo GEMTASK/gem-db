@@ -14,6 +14,7 @@ pub enum Value {
     Int64(i64),
     String(String),
     Relation(i32),
+    Array(Vec<Vec<Value>>),
 }
 
 #[derive(Debug)]
@@ -146,13 +147,14 @@ impl Table {
                 Value::Relation(value) => unsafe {
                     *(records_ptr.add(offset) as *mut i32) = *value;
                 },
+                Value::Array(values) => {}
             }
         }
 
         self.next_records_offset += self.row_width as usize;
     }
 
-    pub fn select2(&self) -> Vec<Vec<Value>> {
+    pub fn select(&self) -> Vec<Vec<Value>> {
         let mut rows = vec![];
         let mut columns = vec![];
 
@@ -172,58 +174,6 @@ impl Table {
                             columns.push(Value::Int64(*(records_ptr.add(offset) as *const i64)))
                         }
                         Type::String => {
-                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
-                        }
-                        Type::Relation { table } => {
-                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
-                        }
-                    }
-                }
-            }
-
-            let xxx = columns;
-            columns = vec![];
-            rows.push(xxx);
-        }
-
-        return rows;
-    }
-
-    pub fn select(&self) {
-        let records_ptr: *const u8 = self.records.as_ptr();
-        let storage_ptr: *const u8 = self.storage.as_ptr();
-
-        for relation in self.relations.iter() {
-            // println!("{:?}", relation);
-
-            println!("{:?}", (*relation.table.borrow()).select2());
-        }
-
-        for (i, field) in self.columns.iter().enumerate() {
-            print!("{:<12}", field.name);
-        }
-
-        println!();
-
-        for (i, field) in self.columns.iter().enumerate() {
-            print!("{:<12}", "-".repeat(11));
-        }
-
-        println!();
-
-        for j in 0..self.next_records_offset / self.row_width as usize {
-            for (i, field) in self.columns.iter().enumerate() {
-                let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
-
-                unsafe {
-                    match &field.kind {
-                        Type::Int32 => {
-                            print!("{:<12}", *(records_ptr.add(offset) as *const i32));
-                        }
-                        Type::Int64 => {
-                            print!("{:<12}", *(records_ptr.add(offset) as *const i64));
-                        }
-                        Type::String => {
                             let string: String;
 
                             let string_ptr = storage_ptr.add(*(records_ptr.add(offset)) as usize);
@@ -232,11 +182,66 @@ impl Table {
                             let slice =
                                 std::slice::from_raw_parts(string_ptr.add(2), length.into());
 
-                            print!("{:<12}", std::str::from_utf8_unchecked(slice));
+                            columns.push(Value::String(
+                                std::str::from_utf8_unchecked(slice).to_owned(),
+                            ));
                         }
                         Type::Relation { table } => {
-                            print!("{:<12}", *(records_ptr.add(offset) as *const i32));
+                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
                         }
+                    }
+                }
+            }
+
+            for comment in self.relations.iter() {
+                columns.push(Value::Array((*comment.table.borrow()).select()));
+            }
+
+            rows.push(columns);
+
+            columns = vec![];
+        }
+
+        return rows;
+    }
+
+    pub fn print(&self) {
+        let records_ptr: *const u8 = self.records.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        for (i, field) in self.columns.iter().enumerate() {
+            print!("{:<12}", field.name);
+        }
+
+        for relation in self.relations.iter() {
+            print!("{:<12}", relation.name);
+        }
+
+        println!();
+
+        for i in 0..(self.columns.len() + self.relations.len()) {
+            print!("{:<12}", "-".repeat(11));
+        }
+
+        println!();
+
+        for row in self.select().iter() {
+            for (i, column) in row.iter().enumerate() {
+                match &column {
+                    Value::Int32(value) => {
+                        print!("{:<12}", value);
+                    }
+                    Value::Int64(value) => {
+                        print!("{:<12}", value);
+                    }
+                    Value::String(value) => {
+                        print!("{:<12}", value);
+                    }
+                    Value::Relation(value) => {
+                        print!("{:<12}", value);
+                    }
+                    Value::Array(values) => {
+                        print!("{:?}", values);
                     }
                 }
             }
