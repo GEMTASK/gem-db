@@ -1,9 +1,11 @@
 #[derive(Debug)]
-pub enum Type<'a> {
+pub enum Type {
     Int32,
     Int64,
     String,
-    Relation { table: &'a Table<'a> },
+    Relation {
+        table: std::rc::Rc<std::cell::RefCell<Table>>,
+    },
 }
 
 pub enum Value {
@@ -14,13 +16,13 @@ pub enum Value {
 }
 
 #[derive(Debug)]
-pub struct Column<'a> {
+pub struct Column {
     pub name: String,
-    pub kind: Type<'a>,
+    pub kind: Type,
 }
 
-impl<'a> Column<'a> {
-    pub fn new(name: &'a str, kind: Type<'a>) -> Column<'a> {
+impl Column {
+    pub fn new(name: &str, kind: Type) -> Column {
         Self {
             name: name.to_string(),
             kind,
@@ -29,9 +31,9 @@ impl<'a> Column<'a> {
 }
 
 #[derive(Debug)]
-pub struct Table<'a> {
+pub struct Table {
     name: String,
-    pub columns: Vec<Column<'a>>,
+    pub columns: Vec<Column>,
     column_offsets: Vec<usize>,
     row_width: u16,
     pub records: Vec<u8>,
@@ -44,8 +46,8 @@ struct Storage {
     records: Vec<u8>,
 }
 
-impl<'a> Table<'a> {
-    pub fn new(name: &'a str, columns: Vec<Column<'a>>) -> Table<'a> {
+impl Table {
+    pub fn new(name: &str, columns: Vec<Column>) -> Table {
         let mut column_offsets: Vec<usize> = vec![0; columns.len()];
         let mut offset: usize = 0;
 
