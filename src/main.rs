@@ -7,7 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use table::{Column, Query, Relation, RelationType, Table, Type, Value};
 
-const QUERY: Query = Query::Eq("id", Value::Int32(255));
+const QUERY: Query = Query::Eq("id", 255);
 
 fn main() {
     let items_table = Table::new(

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
 pub enum Type {
@@ -52,6 +52,7 @@ pub struct Table {
     pub relations: Vec<Relation>,
     pub columns: Vec<Column>,
     column_offsets: Vec<usize>,
+    column_indexes: HashMap<String, usize>,
     row_width: u16,
     pub records: Vec<u8>,
     next_records_offset: usize,
@@ -64,17 +65,20 @@ struct Storage {
 }
 
 pub enum Query<'a> {
-    Eq(&'a str, Value),
+    Eq(&'a str, i32),
     // And(&'a [&'a Query<'a>]),
 }
 
 impl Table {
     pub fn new(name: &str, columns: Vec<Column>) -> Table {
+        let mut column_indexes: HashMap<String, usize> = HashMap::new();
         let mut column_offsets: Vec<usize> = vec![0; columns.len()];
         let mut offset: usize = 0;
 
-        for (i, field) in columns.iter().enumerate() {
-            match &field.kind {
+        for (i, column) in columns.iter().enumerate() {
+            column_indexes.insert(column.name.clone(), i);
+
+            match &column.kind {
                 Type::Int32 => {
                     offset += (4 - offset % 4) % 4;
                     column_offsets[i] = offset;
@@ -103,6 +107,7 @@ impl Table {
             relations: vec![],
             columns,
             column_offsets,
+            column_indexes,
             row_width: offset as u16,
             records: vec![0u8; 32],
             next_records_offset: 0,
@@ -159,9 +164,70 @@ impl Table {
         self.next_records_offset += self.row_width as usize;
     }
 
+    pub fn extract(&self, index: usize) -> Vec<Value> {
+        let records_ptr: *const u8 = self.records.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        let row_offset = self.row_width as usize * index;
+
+        let mut columns = vec![];
+
+        for (i, field) in self.columns.iter().enumerate() {
+            let offset = row_offset + self.column_offsets[i] as usize;
+
+            match &field.kind {
+                Type::Int32 => unsafe {
+                    columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
+                },
+                Type::Int64 => unsafe {
+                    columns.push(Value::Int64(*(records_ptr.add(offset) as *const i64)))
+                },
+                Type::String => unsafe {
+                    let string: String;
+
+                    let string_ptr = storage_ptr.add(*(records_ptr.add(offset)) as usize);
+                    let length = *(string_ptr as *const u16);
+
+                    let slice = std::slice::from_raw_parts(string_ptr.add(2), length.into());
+
+                    columns.push(Value::String(
+                        std::str::from_utf8_unchecked(slice).to_owned(),
+                    ));
+                },
+                Type::Relation { table } => unsafe {
+                    columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
+                },
+            }
+        }
+
+        return columns;
+    }
+
+    fn filter(&self, query: Query, values: Vec<Value>) -> bool {
+        match query {
+            Query::Eq(a, b) => match &values[self.column_indexes[a]] {
+                Value::Int32(value) => {
+                    return *value == b;
+                }
+                Value::Int64(value) => {
+                    return false;
+                }
+                Value::String(value) => {
+                    return false;
+                }
+                Value::Array(value) => {
+                    return false;
+                }
+                Value::Relation(value) => {
+                    return false;
+                }
+            },
+        }
+    }
+
     pub fn select(&self, query: Option<Query>) -> Vec<Vec<Value>> {
         let mut rows = vec![];
-        let mut columns = vec![];
+        let mut columns;
 
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
@@ -176,44 +242,27 @@ impl Table {
         }
 
         for j in 0..self.next_records_offset / self.row_width as usize {
-            for (i, field) in self.columns.iter().enumerate() {
-                let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
+            columns = self.extract(j);
 
-                unsafe {
-                    match &field.kind {
-                        Type::Int32 => {
-                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
-                        }
-                        Type::Int64 => {
-                            columns.push(Value::Int64(*(records_ptr.add(offset) as *const i64)))
-                        }
-                        Type::String => {
-                            let string: String;
+            // let x = self.filter(query, columns);
 
-                            let string_ptr = storage_ptr.add(*(records_ptr.add(offset)) as usize);
-                            let length = *(string_ptr as *const u16);
-
-                            let slice =
-                                std::slice::from_raw_parts(string_ptr.add(2), length.into());
-
-                            columns.push(Value::String(
-                                std::str::from_utf8_unchecked(slice).to_owned(),
-                            ));
-                        }
-                        Type::Relation { table } => {
-                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
-                        }
-                    }
-                }
-            }
+            // match &columns[0] {
+            //     Value::Int32(value) => {
+            //         if *value != 255 {
+            //             break;
+            //         }
+            //     }
+            //     Value::Int64(value) => {}
+            //     Value::String(value) => {}
+            //     Value::Relation(value) => {}
+            //     Value::Array(values) => {}
+            // }
 
             for comment in self.relations.iter() {
                 columns.push(Value::Array((*comment.table.borrow()).select(None)));
             }
 
             rows.push(columns);
-
-            columns = vec![];
         }
 
         return rows;
