@@ -203,29 +203,25 @@ impl Table {
         return columns;
     }
 
-    fn filter(&self, query: Query, values: Vec<Value>) -> bool {
-        match query {
-            Query::Eq(a, b) => match &values[self.column_indexes[a]] {
-                Value::Int32(value) => {
-                    return *value == b;
+    fn filter<'a>(&self, query_or_none: Option<&'a Query>, values: &'a Vec<Value>) -> bool {
+        if let Some(query) = query_or_none {
+            match query {
+                Query::Eq(column_name, query_value) => {
+                    match &values[self.column_indexes[*column_name]] {
+                        Value::Int32(value) => return *value == *query_value,
+                        Value::Int64(value) => return false,
+                        Value::String(value) => return false,
+                        Value::Array(value) => return false,
+                        Value::Relation(value) => return false,
+                    }
                 }
-                Value::Int64(value) => {
-                    return false;
-                }
-                Value::String(value) => {
-                    return false;
-                }
-                Value::Array(value) => {
-                    return false;
-                }
-                Value::Relation(value) => {
-                    return false;
-                }
-            },
+            }
         }
+
+        return false;
     }
 
-    pub fn select(&self, query: Option<Query>) -> Vec<Vec<Value>> {
+    pub fn select<'a>(&self, query: Option<&'a Query>) -> Vec<Vec<Value>> {
         let mut rows = vec![];
         let mut columns;
 
@@ -244,19 +240,11 @@ impl Table {
         for j in 0..self.next_records_offset / self.row_width as usize {
             columns = self.extract(j);
 
-            // let x = self.filter(query, columns);
+            let x = self.filter(query, &columns);
 
-            // match &columns[0] {
-            //     Value::Int32(value) => {
-            //         if *value != 255 {
-            //             break;
-            //         }
-            //     }
-            //     Value::Int64(value) => {}
-            //     Value::String(value) => {}
-            //     Value::Relation(value) => {}
-            //     Value::Array(values) => {}
-            // }
+            if !x {
+                continue;
+            }
 
             for comment in self.relations.iter() {
                 columns.push(Value::Array((*comment.table.borrow()).select(None)));

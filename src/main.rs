@@ -66,7 +66,7 @@ fn main() {
 
     let items_table_borrow = &(*items_table_rc.borrow_mut());
 
-    items_table_borrow.print(items_table_borrow.select(Some(QUERY)));
+    items_table_borrow.print(items_table_borrow.select(Some(&QUERY)));
 
     // println!("{:#?}", comments_table);
 }
