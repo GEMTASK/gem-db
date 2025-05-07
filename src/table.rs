@@ -63,6 +63,11 @@ struct Storage {
     records: Vec<u8>,
 }
 
+pub enum Query<'a> {
+    Eq(&'a str, Value),
+    // And(&'a [&'a Query<'a>]),
+}
+
 impl Table {
     pub fn new(name: &str, columns: Vec<Column>) -> Table {
         let mut column_offsets: Vec<usize> = vec![0; columns.len()];
@@ -154,12 +159,21 @@ impl Table {
         self.next_records_offset += self.row_width as usize;
     }
 
-    pub fn select(&self) -> Vec<Vec<Value>> {
+    pub fn select(&self, query: Option<Query>) -> Vec<Vec<Value>> {
         let mut rows = vec![];
         let mut columns = vec![];
 
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        match query {
+            Some(query) => match query {
+                Query::Eq(a, b) => {
+                    println!("{:?} == {:?}", a, b);
+                }
+            },
+            None => {}
+        }
 
         for j in 0..self.next_records_offset / self.row_width as usize {
             for (i, field) in self.columns.iter().enumerate() {
@@ -194,7 +208,7 @@ impl Table {
             }
 
             for comment in self.relations.iter() {
-                columns.push(Value::Array((*comment.table.borrow()).select()));
+                columns.push(Value::Array((*comment.table.borrow()).select(None)));
             }
 
             rows.push(columns);
@@ -205,7 +219,7 @@ impl Table {
         return rows;
     }
 
-    pub fn print(&self) {
+    pub fn print(&self, values: Vec<Vec<Value>>) {
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
@@ -225,7 +239,7 @@ impl Table {
 
         println!();
 
-        for row in self.select().iter() {
+        for row in values.iter() {
             for (i, column) in row.iter().enumerate() {
                 match &column {
                     Value::Int32(value) => {

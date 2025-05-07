@@ -5,7 +5,9 @@ mod table;
 
 use std::{cell::RefCell, rc::Rc};
 
-use table::{Column, Relation, RelationType, Table, Type, Value};
+use table::{Column, Query, Relation, RelationType, Table, Type, Value};
+
+const QUERY: Query = Query::Eq("id", Value::Int32(255));
 
 fn main() {
     let items_table = Table::new(
@@ -62,7 +64,9 @@ fn main() {
         Value::Int32(200),
     ]);
 
-    (*items_table_rc.borrow_mut()).print();
+    let items_table_borrow = &(*items_table_rc.borrow_mut());
+
+    items_table_borrow.print(items_table_borrow.select(Some(QUERY)));
 
     // println!("{:#?}", comments_table);
 }
