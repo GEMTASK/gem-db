@@ -1,9 +1,9 @@
 #[derive(Debug)]
-pub enum Type {
+pub enum Type<'a> {
     Int32,
     Int64,
     String,
-    Relation { table: Table },
+    Relation { table: &'a Table<'a> },
 }
 
 pub enum Value {
@@ -14,13 +14,13 @@ pub enum Value {
 }
 
 #[derive(Debug)]
-pub struct Column {
+pub struct Column<'a> {
     pub name: String,
-    pub kind: Type,
+    pub kind: Type<'a>,
 }
 
-impl Column {
-    pub fn new(name: &str, kind: Type) -> Column {
+impl<'a> Column<'a> {
+    pub fn new(name: &'a str, kind: Type<'a>) -> Column<'a> {
         Self {
             name: name.to_string(),
             kind,
@@ -29,9 +29,9 @@ impl Column {
 }
 
 #[derive(Debug)]
-pub struct Table {
+pub struct Table<'a> {
     name: String,
-    pub columns: Vec<Column>,
+    pub columns: Vec<Column<'a>>,
     column_offsets: Vec<usize>,
     row_width: u16,
     pub records: Vec<u8>,
@@ -44,8 +44,8 @@ struct Storage {
     records: Vec<u8>,
 }
 
-impl Table {
-    pub fn new(name: &str, columns: Vec<Column>) -> Table {
+impl<'a> Table<'a> {
+    pub fn new(name: &'a str, columns: Vec<Column<'a>>) -> Table<'a> {
         let mut column_offsets: Vec<usize> = vec![0; columns.len()];
         let mut offset: usize = 0;
 
