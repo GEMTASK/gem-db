@@ -1,13 +1,14 @@
+use std::{cell::RefCell, rc::Rc};
+
 #[derive(Debug)]
 pub enum Type {
     Int32,
     Int64,
     String,
-    Relation {
-        table: std::rc::Rc<std::cell::RefCell<Table>>,
-    },
+    Relation { table: Rc<RefCell<Table>> },
 }
 
+#[derive(Clone, Debug)]
 pub enum Value {
     Int32(i32),
     Int64(i64),
@@ -31,8 +32,23 @@ impl Column {
 }
 
 #[derive(Debug)]
+pub enum RelationType {
+    Scalar,
+    Array,
+}
+
+#[derive(Debug)]
+pub struct Relation {
+    pub name: String,
+    pub key: String,
+    pub r#type: RelationType,
+    pub table: Rc<RefCell<Table>>,
+}
+
+#[derive(Debug)]
 pub struct Table {
     name: String,
+    pub relations: Vec<Relation>,
     pub columns: Vec<Column>,
     column_offsets: Vec<usize>,
     row_width: u16,
@@ -69,13 +85,16 @@ impl Table {
                     offset += 4;
                 }
                 Type::Relation { table } => {
-                    //
+                    offset += (4 - offset % 4) % 4;
+                    column_offsets[i] = offset;
+                    offset += 4;
                 }
             }
         }
 
         Self {
             name: name.to_string(),
+            relations: vec![],
             columns,
             column_offsets,
             row_width: offset as u16,
@@ -84,6 +103,10 @@ impl Table {
             storage: vec![0u8; 16],
             next_storage_offset: 0,
         }
+    }
+
+    pub fn add_relations(&mut self, relations: Vec<Relation>) {
+        self.relations = relations;
     }
 
     pub fn get_field<T: Copy>(&self, field_index: usize) -> T {
@@ -120,18 +143,61 @@ impl Table {
 
                     self.next_storage_offset += value.len() + 2;
                 },
-                Value::Relation(value) => {
-                    //
-                }
+                Value::Relation(value) => unsafe {
+                    *(records_ptr.add(offset) as *mut i32) = *value;
+                },
             }
         }
 
         self.next_records_offset += self.row_width as usize;
     }
 
+    pub fn select2(&self) -> Vec<Vec<Value>> {
+        let mut rows = vec![];
+        let mut columns = vec![];
+
+        let records_ptr: *const u8 = self.records.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        for j in 0..self.next_records_offset / self.row_width as usize {
+            for (i, field) in self.columns.iter().enumerate() {
+                let offset = self.row_width as usize * j + self.column_offsets[i] as usize;
+
+                unsafe {
+                    match &field.kind {
+                        Type::Int32 => {
+                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
+                        }
+                        Type::Int64 => {
+                            columns.push(Value::Int64(*(records_ptr.add(offset) as *const i64)))
+                        }
+                        Type::String => {
+                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
+                        }
+                        Type::Relation { table } => {
+                            columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
+                        }
+                    }
+                }
+            }
+
+            let xxx = columns;
+            columns = vec![];
+            rows.push(xxx);
+        }
+
+        return rows;
+    }
+
     pub fn select(&self) {
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        for relation in self.relations.iter() {
+            // println!("{:?}", relation);
+
+            println!("{:?}", (*relation.table.borrow()).select2());
+        }
 
         for (i, field) in self.columns.iter().enumerate() {
             print!("{:<12}", field.name);
@@ -169,7 +235,7 @@ impl Table {
                             print!("{:<12}", std::str::from_utf8_unchecked(slice));
                         }
                         Type::Relation { table } => {
-                            //
+                            print!("{:<12}", *(records_ptr.add(offset) as *const i32));
                         }
                     }
                 }

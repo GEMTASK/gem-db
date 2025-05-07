@@ -5,7 +5,7 @@ mod table;
 
 use std::{cell::RefCell, rc::Rc};
 
-use table::{Column, Table, Type, Value};
+use table::{Column, Relation, RelationType, Table, Type, Value};
 
 fn main() {
     let items_table = Table::new(
@@ -19,7 +19,7 @@ fn main() {
 
     let items_table_rc = Rc::new(RefCell::new(items_table));
 
-    let mut comments_table = Table::new(
+    let comments_table = Table::new(
         "comments",
         vec![
             Column::new("id", Type::Int32),
@@ -33,6 +33,15 @@ fn main() {
         ],
     );
 
+    let comments_table_rc = Rc::new(RefCell::new(comments_table));
+
+    (*items_table_rc.borrow_mut()).add_relations(vec![Relation {
+        name: "comments".to_string(),
+        key: "item_id".to_string(),
+        r#type: RelationType::Array,
+        table: comments_table_rc.clone(),
+    }]);
+
     (*items_table_rc.borrow_mut()).insert(&[
         Value::Int32(255),
         Value::String("ÀÀ".to_string()),
@@ -45,9 +54,15 @@ fn main() {
         Value::Int64(20),
     ]);
 
+    // println!("{:#?}", (*items_table_rc.borrow_mut()));
+
+    (*comments_table_rc.borrow_mut()).insert(&[
+        Value::Int32(10),
+        Value::Relation(255),
+        Value::Int32(20),
+    ]);
+
     (*items_table_rc.borrow_mut()).select();
 
-    comments_table.insert(&[Value::Int32(10), Value::Relation(0), Value::Int32(20)]);
-
-    println!("{:#?}", (*items_table_rc.borrow_mut()));
+    // println!("{:#?}", comments_table);
 }
