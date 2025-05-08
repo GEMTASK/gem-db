@@ -1,11 +1,11 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 #[derive(Debug)]
 pub enum Type {
     Int32,
     Int64,
     String,
-    Relation { table: Rc<RefCell<Table>> },
+    Relation { table: Arc<RefCell<Table>> },
 }
 
 #[derive(Clone, Debug)]
@@ -43,7 +43,7 @@ pub struct Relation {
     pub name: String,
     pub key: String,
     pub r#type: RelationType,
-    pub table: Rc<RefCell<Table>>,
+    pub table: Arc<RefCell<Table>>,
 }
 
 #[derive(Debug)]
@@ -193,7 +193,7 @@ impl Table {
         }
     }
 
-    pub fn extract_row(&self, index: usize) -> Vec<Value> {
+    pub fn extract_record(&self, index: usize) -> Vec<Value> {
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
@@ -258,7 +258,7 @@ impl Table {
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
         for index in 0..self.next_records_offset / self.row_width as usize {
-            columns = self.extract_row(index);
+            columns = self.extract_record(index);
 
             let x = self.filter(query, &columns);
 
