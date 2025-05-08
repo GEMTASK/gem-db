@@ -53,7 +53,7 @@ pub struct Table {
     pub columns: Vec<Column>,
     column_offsets: Vec<usize>,
     column_indexes: HashMap<String, usize>,
-    row_width: u16,
+    row_width: usize,
     pub records: Vec<u8>,
     next_records_offset: usize,
     pub storage: Vec<u8>,
@@ -108,7 +108,7 @@ impl Table {
             columns,
             column_offsets,
             column_indexes,
-            row_width: offset as u16,
+            row_width: offset,
             records: vec![0u8; 32],
             next_records_offset: 0,
             storage: vec![0u8; 16],
@@ -164,7 +164,36 @@ impl Table {
         self.next_records_offset += self.row_width as usize;
     }
 
-    pub fn extract(&self, index: usize) -> Vec<Value> {
+    pub fn extract_column(&self, record: &[u8], column_index: usize) -> Value {
+        let record_ptr = record.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr();
+
+        let offset = self.column_offsets[column_index];
+
+        match &self.columns[column_index].kind {
+            Type::Int32 => unsafe {
+                return Value::Int32(*(record_ptr.add(offset) as *const i32));
+            },
+            Type::Int64 => unsafe {
+                return Value::Int64(*(record_ptr.add(offset) as *const i64));
+            },
+            Type::String => unsafe {
+                let string: String;
+
+                let string_ptr = storage_ptr.add(*(record_ptr.add(offset)) as usize);
+                let length = *(string_ptr as *const u16);
+
+                let slice = std::slice::from_raw_parts(string_ptr.add(2), length.into());
+
+                return Value::String(std::str::from_utf8_unchecked(slice).to_owned());
+            },
+            Type::Relation { table } => unsafe {
+                return Value::Int32(*(record_ptr.add(offset) as *const i32));
+            },
+        }
+    }
+
+    pub fn extract_row(&self, index: usize) -> Vec<Value> {
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
@@ -229,7 +258,7 @@ impl Table {
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
         for index in 0..self.next_records_offset / self.row_width as usize {
-            columns = self.extract(index);
+            columns = self.extract_row(index);
 
             let x = self.filter(query, &columns);
 
