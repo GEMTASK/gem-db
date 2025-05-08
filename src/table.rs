@@ -228,23 +228,14 @@ impl Table {
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
-        match query {
-            Some(query) => match query {
-                Query::Eq(a, b) => {
-                    println!("{:?} == {:?}", a, b);
-                }
-            },
-            None => {}
-        }
-
         for index in 0..self.next_records_offset / self.row_width as usize {
             columns = self.extract(index);
 
             let x = self.filter(query, &columns);
 
-            if !x {
-                continue;
-            }
+            // if !x {
+            //     continue;
+            // }
 
             for comment in self.relations.iter() {
                 columns.push(Value::Array((*comment.table.borrow()).select(None)));
@@ -279,21 +270,11 @@ impl Table {
         for row in values.iter() {
             for (i, column) in row.iter().enumerate() {
                 match &column {
-                    Value::Int32(value) => {
-                        print!("{:<12}", value);
-                    }
-                    Value::Int64(value) => {
-                        print!("{:<12}", value);
-                    }
-                    Value::String(value) => {
-                        print!("{:<12}", value);
-                    }
-                    Value::Relation(value) => {
-                        print!("{:<12}", value);
-                    }
-                    Value::Array(values) => {
-                        print!("{:?}", values);
-                    }
+                    Value::Int32(value) => print!("{:<12}", value),
+                    Value::Int64(value) => print!("{:<12}", value),
+                    Value::String(value) => print!("{:<12}", value),
+                    Value::Relation(value) => print!("{:<12}", value),
+                    Value::Array(values) => print!("{:?}", values),
                 }
             }
 
@@ -303,3 +284,9 @@ impl Table {
         println!();
     }
 }
+
+/*
+
+let value = i32::from_le_bytes(self.records[0..4].try_into().unwrap());
+
+*/
