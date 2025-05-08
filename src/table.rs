@@ -237,8 +237,8 @@ impl Table {
             None => {}
         }
 
-        for j in 0..self.next_records_offset / self.row_width as usize {
-            columns = self.extract(j);
+        for index in 0..self.next_records_offset / self.row_width as usize {
+            columns = self.extract(index);
 
             let x = self.filter(query, &columns);
 
