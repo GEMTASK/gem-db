@@ -4,7 +4,7 @@
 mod table;
 mod types;
 
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use table::{Query, Table};
 use types::{Field, FieldType, RelationType, Value};
@@ -29,6 +29,11 @@ mod tests {
 fn main() {
     let items_table = Arc::new(RefCell::new(Table::new("items")));
     let comments_table = Arc::new(RefCell::new(Table::new("comments")));
+
+    let tables = HashMap::<&str, Arc<RefCell<Table>>>::from([
+        ("items", items_table.clone()),
+        ("comments", comments_table.clone()),
+    ]);
 
     //
 
