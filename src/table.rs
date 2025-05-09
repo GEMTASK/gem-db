@@ -1,96 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
-pub enum FieldType {
-    Int32,
-    Int64,
-    String,
-    Table {
-        key: String,
-        relation_type: RelationType,
-        table: Arc<RefCell<Table>>,
-    },
-    Relation {
-        table: Arc<RefCell<Table>>,
-    },
-}
-
-#[derive(Debug)]
-pub struct Field {
-    pub name: String,
-    pub field_type: FieldType,
-}
-
-impl Field {
-    pub fn new(name: &str, field_type: FieldType) -> Field {
-        Self {
-            name: name.to_string(),
-            field_type,
-        }
-    }
-}
-
-fn field_type_to_column_type(field_type: FieldType) -> ColumnType {
-    return match field_type {
-        FieldType::Int32 => ColumnType::Int32,
-        FieldType::Int64 => ColumnType::Int64,
-        FieldType::String => ColumnType::String,
-        FieldType::Relation { table } => ColumnType::Relation { table: table },
-        FieldType::Table {
-            key,
-            relation_type,
-            table,
-        } => ColumnType::Int32,
-    };
-}
-
-//
-
-#[derive(Debug, Clone)]
-pub enum ColumnType {
-    Int32,
-    Int64,
-    String,
-    Relation { table: Arc<RefCell<Table>> },
-}
-
-#[derive(Debug)]
-pub enum Value {
-    Int32(i32),
-    Int64(i64),
-    String(String),
-    Relation(i32),
-    Array(Vec<Vec<Value>>),
-}
-
-#[derive(Debug)]
-pub struct Column {
-    pub name: String,
-    pub column_type: ColumnType,
-}
-
-impl Column {
-    pub fn new(name: &str, column_type: ColumnType) -> Column {
-        Self {
-            name: name.to_string(),
-            column_type,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum RelationType {
-    Scalar,
-    Array,
-}
-
-#[derive(Debug)]
-pub struct Relation {
-    pub name: String,
-    pub key: String,
-    pub relation_type: RelationType,
-    pub table: Arc<RefCell<Table>>,
-}
+use crate::types::{Column, ColumnType, Field, FieldType, Relation, Value};
 
 #[derive(Debug)]
 pub struct Table {
@@ -113,6 +23,20 @@ struct Storage {
 pub enum Query<'a> {
     Eq(&'a str, i32),
     // And(&'a [&'a Query<'a>]),
+}
+
+fn field_type_to_column_type(field_type: FieldType) -> ColumnType {
+    return match field_type {
+        FieldType::Int32 => ColumnType::Int32,
+        FieldType::Int64 => ColumnType::Int64,
+        FieldType::String => ColumnType::String,
+        FieldType::Relation { table } => ColumnType::Relation { table: table },
+        FieldType::Table {
+            key,
+            relation_type,
+            table,
+        } => ColumnType::Int32,
+    };
 }
 
 impl Table {

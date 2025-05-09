@@ -2,10 +2,12 @@
 #![allow(unused_variables)]
 
 mod table;
+mod types;
 
 use std::{cell::RefCell, sync::Arc};
 
-use table::{Field, FieldType, Query, RelationType, Table, Value};
+use table::{Query, Table};
+use types::{Field, FieldType, RelationType, Value};
 
 const QUERY: Query = Query::Eq("id", 255);
 
