@@ -5,10 +5,17 @@ pub enum Type {
     Int32,
     Int64,
     String,
-    Relation { table: Arc<RefCell<Table>> },
+    Table {
+        key: String,
+        kind: RelationType,
+        table: Arc<RefCell<Table>>,
+    },
+    Relation {
+        table: Arc<RefCell<Table>>,
+    },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Value {
     Int32(i32),
     Int64(i64),
@@ -32,7 +39,7 @@ impl Column {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RelationType {
     Scalar,
     Array,
@@ -94,6 +101,9 @@ impl Table {
                     column_offsets[i] = offset;
                     offset += 4;
                 }
+                Type::Table { key, kind, table } => {
+                    //
+                }
                 Type::Relation { table } => {
                     offset += (4 - offset % 4) % 4;
                     column_offsets[i] = offset;
@@ -113,6 +123,22 @@ impl Table {
             next_records_offset: 0,
             storage: vec![0u8; 16],
             next_storage_offset: 0,
+        }
+    }
+
+    pub fn add_columns(&mut self, columns: Vec<Column>) {
+        for column in columns {
+            match &column.kind {
+                Type::Table { key, kind, table } => {
+                    self.relations.push(Relation {
+                        name: column.name.clone(),
+                        key: key.clone(),
+                        table: table.clone(),
+                        r#type: kind.clone(),
+                    });
+                }
+                _ => self.columns.push(column),
+            }
         }
     }
 
@@ -187,6 +213,9 @@ impl Table {
 
                 return Value::String(std::str::from_utf8_unchecked(slice).to_owned());
             },
+            Type::Table { key, kind, table } => {
+                return Value::Int32(0); //
+            }
             Type::Relation { table } => unsafe {
                 return Value::Int32(*(record_ptr.add(offset) as *const i32));
             },
@@ -223,6 +252,9 @@ impl Table {
                         std::str::from_utf8_unchecked(slice).to_owned(),
                     ));
                 },
+                Type::Table { key, kind, table } => {
+                    //
+                }
                 Type::Relation { table } => unsafe {
                     columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
                 },

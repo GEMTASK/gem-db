@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 
 mod table;
+mod test;
 
 use std::{cell::RefCell, sync::Arc};
 
@@ -51,6 +52,31 @@ fn main() {
     );
 
     let comments_table_rc = Arc::new(RefCell::new(comments_table));
+
+    // items_table_rc.borrow_mut().add_columns(vec![
+    //     Column::new("id", Type::Int32), //
+    //     Column::new("title", Type::String),
+    //     Column::new("estimate", Type::Int64),
+    //     Column::new(
+    //         "comments",
+    //         Type::Table {
+    //             key: "itemId".to_string(),
+    //             kind: RelationType::Array,
+    //             table: comments_table_rc.clone(),
+    //         },
+    //     ),
+    // ]);
+
+    // comments_table_rc.borrow_mut().add_columns(vec![
+    //     Column::new("id", Type::Int32),
+    //     Column::new(
+    //         "item_id",
+    //         Type::Relation {
+    //             table: items_table_rc.clone(),
+    //         },
+    //     ),
+    //     Column::new("comment", Type::Int32),
+    // ]);
 
     items_table_rc.borrow_mut().add_relations(vec![Relation {
         name: "comments".to_string(),
