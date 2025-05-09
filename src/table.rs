@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone)]
-pub enum ColumnType {
+pub enum FieldType {
     Int32,
     Int64,
     String,
@@ -13,6 +13,45 @@ pub enum ColumnType {
     Relation {
         table: Arc<RefCell<Table>>,
     },
+}
+
+#[derive(Debug)]
+pub struct Field {
+    pub name: String,
+    pub field_type: FieldType,
+}
+
+impl Field {
+    pub fn new(name: &str, field_type: FieldType) -> Field {
+        Self {
+            name: name.to_string(),
+            field_type,
+        }
+    }
+}
+
+fn field_type_to_column_type(field_type: FieldType) -> ColumnType {
+    return match field_type {
+        FieldType::Int32 => ColumnType::Int32,
+        FieldType::Int64 => ColumnType::Int64,
+        FieldType::String => ColumnType::String,
+        FieldType::Relation { table } => ColumnType::Relation { table: table },
+        FieldType::Table {
+            key,
+            relation_type,
+            table,
+        } => ColumnType::Int32,
+    };
+}
+
+//
+
+#[derive(Debug, Clone)]
+pub enum ColumnType {
+    Int32,
+    Int64,
+    String,
+    Relation { table: Arc<RefCell<Table>> },
 }
 
 #[derive(Debug)]
@@ -92,14 +131,14 @@ impl Table {
         }
     }
 
-    pub fn add_columns(&mut self, columns: Vec<Column>) {
+    pub fn add_fields(&mut self, fields: Vec<Field>) {
         let mut column_indexes: HashMap<String, usize> = HashMap::new();
         let mut column_offsets: Vec<usize> = vec![];
         let mut offset: usize = 0;
 
-        for (i, column) in columns.iter().enumerate() {
-            match &column.column_type {
-                ColumnType::Table {
+        for (i, column) in fields.iter().enumerate() {
+            match &column.field_type {
+                FieldType::Table {
                     key,
                     relation_type,
                     table,
@@ -112,29 +151,29 @@ impl Table {
                     });
                 }
                 _ => {
-                    match &column.column_type {
-                        ColumnType::Int32 => {
+                    match &column.field_type {
+                        FieldType::Int32 => {
                             offset += (4 - offset % 4) % 4;
                             column_offsets.push(offset);
                             offset += 4;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
-                        ColumnType::Int64 => {
+                        FieldType::Int64 => {
                             offset += (8 - offset % 8) % 8;
                             column_offsets.push(offset);
                             offset += 8;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
-                        ColumnType::String => {
+                        FieldType::String => {
                             offset += (4 - offset % 4) % 4;
                             column_offsets.push(offset);
                             offset += 4;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
-                        ColumnType::Relation { table } => {
+                        FieldType::Relation { table } => {
                             offset += (4 - offset % 4) % 4;
                             column_offsets.push(offset);
                             offset += 4;
@@ -146,7 +185,7 @@ impl Table {
 
                     self.columns.push(Column {
                         name: column.name.clone(),
-                        column_type: column.column_type.clone(),
+                        column_type: field_type_to_column_type(column.field_type.clone()),
                     })
                 }
             }
@@ -228,13 +267,6 @@ impl Table {
 
                 return Value::String(std::str::from_utf8_unchecked(slice).to_owned());
             },
-            ColumnType::Table {
-                key,
-                relation_type,
-                table,
-            } => {
-                return Value::Int32(0); //
-            }
             ColumnType::Relation { table } => unsafe {
                 return Value::Int32(*(record_ptr.add(offset) as *const i32));
             },
@@ -271,13 +303,6 @@ impl Table {
                         std::str::from_utf8_unchecked(slice).to_owned(),
                     ));
                 },
-                ColumnType::Table {
-                    key,
-                    relation_type,
-                    table,
-                } => {
-                    //
-                }
                 ColumnType::Relation { table } => unsafe {
                     columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
                 },

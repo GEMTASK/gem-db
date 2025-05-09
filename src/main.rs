@@ -5,7 +5,7 @@ mod table;
 
 use std::{cell::RefCell, sync::Arc};
 
-use table::{Column, ColumnType, Query, RelationType, Table, Value};
+use table::{Field, FieldType, Query, RelationType, Table, Value};
 
 const QUERY: Query = Query::Eq("id", 255);
 
@@ -30,13 +30,13 @@ fn main() {
 
     //
 
-    items_table.borrow_mut().add_columns(vec![
-        Column::new("id", ColumnType::Int32),
-        Column::new("title", ColumnType::String),
-        Column::new("estimate", ColumnType::Int64),
-        Column::new(
+    items_table.borrow_mut().add_fields(vec![
+        Field::new("id", FieldType::Int32),
+        Field::new("title", FieldType::String),
+        Field::new("estimate", FieldType::Int64),
+        Field::new(
             "comments",
-            ColumnType::Table {
+            FieldType::Table {
                 key: "itemId".to_string(),
                 relation_type: RelationType::Array,
                 table: comments_table.clone(),
@@ -44,15 +44,15 @@ fn main() {
         ),
     ]);
 
-    comments_table.borrow_mut().add_columns(vec![
-        Column::new("id", ColumnType::Int32),
-        Column::new(
+    comments_table.borrow_mut().add_fields(vec![
+        Field::new("id", FieldType::Int32),
+        Field::new(
             "item_id",
-            ColumnType::Relation {
+            FieldType::Relation {
                 table: items_table.clone(),
             },
         ),
-        Column::new("comment", ColumnType::Int32),
+        Field::new("comment", FieldType::Int32),
     ]);
 
     //
