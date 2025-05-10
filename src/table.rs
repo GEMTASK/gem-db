@@ -3,6 +3,16 @@ use std::collections::HashMap;
 use crate::types::{Column, ColumnType, Field, FieldType, Relation, Value};
 
 #[derive(Debug)]
+pub struct Schema {
+    columns: Vec<Column>,
+}
+
+#[derive(Debug)]
+pub struct View {
+    schema: Schema,
+}
+
+#[derive(Debug)]
 pub struct Table {
     pub name: String,
     relations: Vec<Relation>,
@@ -182,12 +192,9 @@ impl Table {
                 return Value::Int64(*(record_ptr.add(offset) as *const i64));
             },
             ColumnType::String => unsafe {
-                let string: String;
-
                 let string_ptr = storage_ptr.add(*(record_ptr.add(offset)) as usize);
-                let length = *(string_ptr as *const u16);
-
-                let slice = std::slice::from_raw_parts(string_ptr.add(2), length.into());
+                let slice =
+                    std::slice::from_raw_parts(string_ptr.add(2), *(string_ptr as *const usize));
 
                 return Value::String(std::str::from_utf8_unchecked(slice).to_owned());
             },
@@ -259,13 +266,12 @@ impl Table {
 
     pub fn select<'a>(&self, query: Option<&'a Query>) -> Vec<Vec<Value>> {
         let mut rows = vec![];
-        let mut columns;
 
         let records_ptr: *const u8 = self.records.as_ptr();
         let storage_ptr: *const u8 = self.storage.as_ptr();
 
         for index in 0..self.next_records_offset / self.row_width as usize {
-            columns = self.extract_record(index);
+            let mut columns = self.extract_record(index);
 
             let x = self.filter(query, &columns);
 
@@ -273,7 +279,7 @@ impl Table {
                 continue;
             }
 
-            let relation_query = Query::Eq("item_id", Value::Int32(255));
+            let relation_query = Query::Eq("item_id", columns[0].clone());
 
             for comment in self.relations.iter() {
                 columns.push(Value::Array(

@@ -30,7 +30,7 @@ fn main() {
         Field::new(
             "comments",
             FieldType::Table {
-                key: "itemId".to_string(),
+                key: "item_id".to_string(),
                 relation_type: RelationType::Array,
                 table: comments_table.clone(),
             },

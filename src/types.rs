@@ -42,7 +42,7 @@ pub enum ColumnType {
     Relation { table: Arc<RefCell<Table>> },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Int32(i32),
     Int64(i64),
