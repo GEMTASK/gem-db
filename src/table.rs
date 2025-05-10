@@ -254,7 +254,7 @@ impl Table {
             }
         }
 
-        return false;
+        return true;
     }
 
     pub fn select<'a>(&self, query: Option<&'a Query>) -> Vec<Vec<Value>> {
@@ -269,12 +269,16 @@ impl Table {
 
             let x = self.filter(query, &columns);
 
-            // if !x {
-            //     continue;
-            // }
+            if !x {
+                continue;
+            }
+
+            let relation_query = Query::Eq("item_id", Value::Int32(255));
 
             for comment in self.relations.iter() {
-                columns.push(Value::Array((*comment.table.borrow()).select(None)));
+                columns.push(Value::Array(
+                    (*comment.table.borrow()).select(Some(&relation_query)),
+                ));
             }
 
             rows.push(columns);
@@ -303,8 +307,8 @@ impl Table {
 
         println!();
 
-        for row in values.iter() {
-            for (i, column) in row.iter().enumerate() {
+        for record in values.iter() {
+            for (i, column) in record.iter().enumerate() {
                 match &column {
                     Value::Int32(value) => print!("{:<12}", value),
                     Value::Int64(value) => print!("{:<12}", value),
