@@ -3,6 +3,7 @@
 
 mod query;
 mod table;
+mod test;
 mod types;
 
 use std::{cell::RefCell, collections::HashMap, sync::Arc};

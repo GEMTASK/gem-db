@@ -42,11 +42,11 @@ pub enum ColumnType {
     Relation { table: Arc<RefCell<Table>> },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone)] // TODO
 pub enum Value {
     Int32(i32),
     Int64(i64),
-    String(String),
+    String(String), // TODO: Convert to Rc so whole string is not copied
     Relation(i32),
     Array(Vec<Vec<Value>>),
 }
