@@ -28,7 +28,7 @@ struct Storage {
 }
 
 pub enum Query<'a> {
-    Eq(&'a str, Value),
+    Eq(&'a str, &'a Value),
     // And(&'a [&'a Query<'a>]),
 }
 
@@ -249,7 +249,7 @@ impl Table {
                 Query::Eq(column_name, query_value) => {
                     return match &values[self.column_indexes[*column_name]] {
                         Value::Int32(value) => match *query_value {
-                            Value::Int32(query_value) => *value == query_value,
+                            Value::Int32(query_value) => *value == *query_value,
                             _ => false,
                         },
                         Value::Int64(value) => false,
@@ -276,9 +276,9 @@ impl Table {
                 continue;
             }
 
-            let relation_query = Query::Eq("item_id", columns[0].clone());
-
             for comment in self.relations.iter() {
+                let relation_query = Query::Eq("item_id", &columns[0]);
+
                 columns.push(Value::Array(
                     (*comment.table.borrow()).select(Some(&relation_query)),
                 ));

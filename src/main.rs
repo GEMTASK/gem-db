@@ -11,7 +11,7 @@ use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use table::{Query, Table};
 use types::{Field, FieldType, RelationType, Value};
 
-const QUERY: Query = Query::Eq("id", Value::Int32(255));
+const QUERY: Query = Query::Eq("id", &Value::Int32(255));
 
 fn main() {
     let mut tables = HashMap::<&str, Arc<RefCell<Table>>>::new();
