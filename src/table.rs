@@ -276,11 +276,13 @@ impl Table {
                 continue;
             }
 
-            for comment in self.relations.iter() {
-                let relation_query = Query::Eq("item_id", &columns[0]);
+            for relation in self.relations.iter() {
+                println!("{:#?}", relation);
+
+                let relation_query = Query::Eq(&relation.key, &columns[0]);
 
                 columns.push(Value::Array(
-                    (*comment.table.borrow()).select(Some(&relation_query)),
+                    (*relation.table.borrow()).select(Some(&relation_query)),
                 ));
             }
 
