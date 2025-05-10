@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+mod query;
 mod table;
 mod types;
 
@@ -9,31 +10,16 @@ use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use table::{Query, Table};
 use types::{Field, FieldType, RelationType, Value};
 
-const QUERY: Query = Query::Eq("id", 255);
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+const QUERY: Query = Query::Eq("id", Value::Int32(255));
 
 fn main() {
+    let mut tables = HashMap::<&str, Arc<RefCell<Table>>>::new();
+
     let items_table = Arc::new(RefCell::new(Table::new("items")));
     let comments_table = Arc::new(RefCell::new(Table::new("comments")));
 
-    let tables = HashMap::<&str, Arc<RefCell<Table>>>::from([
-        ("items", items_table.clone()),
-        ("comments", comments_table.clone()),
-    ]);
+    tables.insert("items", items_table.clone());
+    tables.insert("comments", comments_table.clone());
 
     //
 

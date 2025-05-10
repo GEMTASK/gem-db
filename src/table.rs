@@ -21,7 +21,7 @@ struct Storage {
 }
 
 pub enum Query<'a> {
-    Eq(&'a str, i32),
+    Eq(&'a str, Value),
     // And(&'a [&'a Query<'a>]),
 }
 
@@ -240,13 +240,16 @@ impl Table {
         if let Some(query) = query_or_none {
             match query {
                 Query::Eq(column_name, query_value) => {
-                    match &values[self.column_indexes[*column_name]] {
-                        Value::Int32(value) => return *value == *query_value,
-                        Value::Int64(value) => return false,
-                        Value::String(value) => return false,
-                        Value::Array(value) => return false,
-                        Value::Relation(value) => return false,
-                    }
+                    return match &values[self.column_indexes[*column_name]] {
+                        Value::Int32(value) => match *query_value {
+                            Value::Int32(query_value) => *value == query_value,
+                            _ => false,
+                        },
+                        Value::Int64(value) => false,
+                        Value::String(value) => false,
+                        Value::Array(value) => false,
+                        Value::Relation(value) => false,
+                    };
                 }
             }
         }
