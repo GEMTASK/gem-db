@@ -17,7 +17,7 @@ pub enum FieldType {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Field {
     pub name: String,
     pub field_type: FieldType,

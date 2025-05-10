@@ -3,18 +3,15 @@ use std::collections::HashMap;
 use crate::types::{Column, ColumnType, Field, FieldType, Relation, Value};
 
 #[derive(Debug)]
-pub struct Schema {
-    columns: Vec<Column>,
-}
-
-#[derive(Debug)]
 pub struct View {
-    schema: Schema,
+    fields: Vec<Field>,
+    values: Vec<Vec<Value>>,
 }
 
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
+    fields: Vec<Field>,
     relations: Vec<Relation>,
     columns: Vec<Column>,
     column_offsets: Vec<usize>,
@@ -53,6 +50,7 @@ impl Table {
     pub fn new(name: &str) -> Table {
         Self {
             name: name.to_string(),
+            fields: vec![],
             relations: vec![],
             columns: vec![],
             column_offsets: vec![],
@@ -69,6 +67,8 @@ impl Table {
         let mut column_indexes: HashMap<String, usize> = HashMap::new();
         let mut column_offsets: Vec<usize> = vec![];
         let mut offset: usize = 0;
+
+        self.fields = fields.clone();
 
         for (i, column) in fields.iter().enumerate() {
             match &column.field_type {
@@ -289,6 +289,11 @@ impl Table {
 
             rows.push(columns);
         }
+
+        // return View {
+        //     fields: self.fields,
+        //     values: rows,
+        // };
 
         return rows;
     }
