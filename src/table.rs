@@ -267,9 +267,6 @@ impl Table {
     pub fn select<'a>(&self, query: Option<&'a Query>) -> Vec<Vec<Value>> {
         let mut rows = vec![];
 
-        let records_ptr: *const u8 = self.records.as_ptr();
-        let storage_ptr: *const u8 = self.storage.as_ptr();
-
         for index in 0..self.next_records_offset / self.row_width as usize {
             let mut columns = self.extract_record(index);
 
