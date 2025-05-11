@@ -4,6 +4,7 @@ use crate::table::Table;
 
 #[derive(Debug, Clone)]
 pub enum FieldType {
+    Ulid,
     Int32,
     Int64,
     String,
@@ -36,6 +37,7 @@ impl Field {
 
 #[derive(Debug, Clone)]
 pub enum ColumnType {
+    Ulid,
     Int32,
     Int64,
     String,
@@ -44,6 +46,7 @@ pub enum ColumnType {
 
 #[derive(Debug, Clone)] // TODO
 pub enum Value {
+    Ulid(u128),
     Int32(i32),
     Int64(i64),
     String(String), // TODO: Convert to Rc so whole string is not copied

@@ -34,6 +34,7 @@ pub enum Query<'a> {
 
 fn field_type_to_column_type(field_type: FieldType) -> ColumnType {
     return match field_type {
+        FieldType::Ulid => ColumnType::Ulid,
         FieldType::Int32 => ColumnType::Int32,
         FieldType::Int64 => ColumnType::Int64,
         FieldType::String => ColumnType::String,
@@ -86,6 +87,13 @@ impl Table {
                 }
                 _ => {
                     match &column.field_type {
+                        FieldType::Ulid => {
+                            offset += (16 - offset % 16) % 16;
+                            column_offsets.push(offset);
+                            offset += 16;
+
+                            column_indexes.insert(column.name.clone(), i);
+                        }
                         FieldType::Int32 => {
                             offset += (4 - offset % 4) % 4;
                             column_offsets.push(offset);
@@ -150,6 +158,9 @@ impl Table {
             let offset = self.next_records_offset + field_offset;
 
             match &values[i] {
+                Value::Ulid(value) => unsafe {
+                    *(records_ptr.add(offset) as *mut u128) = *value;
+                },
                 Value::Int32(value) => unsafe {
                     *(records_ptr.add(offset) as *mut i32) = *value;
                 },
@@ -185,6 +196,9 @@ impl Table {
         let offset = self.column_offsets[column_index];
 
         match &self.columns[column_index].column_type {
+            ColumnType::Ulid => unsafe {
+                return Value::Ulid(*(record_ptr.add(offset) as *const u128));
+            },
             ColumnType::Int32 => unsafe {
                 return Value::Int32(*(record_ptr.add(offset) as *const i32));
             },
@@ -216,6 +230,9 @@ impl Table {
             let offset = row_offset + self.column_offsets[i] as usize;
 
             match &column.column_type {
+                ColumnType::Ulid => unsafe {
+                    columns.push(Value::Ulid(*(records_ptr.add(offset) as *const u128)))
+                },
                 ColumnType::Int32 => unsafe {
                     columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)))
                 },
@@ -248,6 +265,10 @@ impl Table {
             match query {
                 Query::Eq(column_name, query_value) => {
                     return match &values[self.column_indexes[*column_name]] {
+                        Value::Ulid(value) => match *query_value {
+                            Value::Ulid(query_value) => *value == *query_value,
+                            _ => false,
+                        },
                         Value::Int32(value) => match *query_value {
                             Value::Int32(query_value) => *value == *query_value,
                             _ => false,
@@ -320,6 +341,7 @@ impl Table {
         for record in values.iter() {
             for (i, column) in record.iter().enumerate() {
                 match &column {
+                    Value::Ulid(value) => print!("{:<12}", value),
                     Value::Int32(value) => print!("{:<12}", value),
                     Value::Int64(value) => print!("{:<12}", value),
                     Value::String(value) => print!("{:<12}", value),
