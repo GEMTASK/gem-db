@@ -65,11 +65,9 @@ fn main() {
 
     // println!("{:#?}", (*items_table.borrow_mut()));
 
-    comments_table.borrow_mut().insert(&[
-        Value::Int32(100),
-        Value::Relation(255),
-        Value::Int32(200),
-    ]);
+    comments_table
+        .borrow_mut()
+        .insert(&[Value::Int32(100), Value::Int32(255), Value::Int32(200)]);
 
     {
         let items_table_borrow = items_table.borrow_mut();

@@ -38,7 +38,7 @@ fn field_type_to_column_type(field_type: FieldType) -> ColumnType {
         FieldType::Int32 => ColumnType::Int32,
         FieldType::Int64 => ColumnType::Int64,
         FieldType::String => ColumnType::String,
-        FieldType::Relation { table } => ColumnType::Relation { table: table },
+        FieldType::Relation { table } => ColumnType::Int32,
         FieldType::Table {
             key,
             relation_type,
@@ -179,9 +179,6 @@ impl Table {
 
                     self.next_storage_offset += value.len() + 2;
                 },
-                Value::Relation(value) => unsafe {
-                    *(records_ptr.add(offset) as *mut i32) = *value;
-                },
                 Value::Array(values) => {}
             }
         }
@@ -211,9 +208,6 @@ impl Table {
                     std::slice::from_raw_parts(string_ptr.add(2), *(string_ptr as *const usize));
 
                 return Value::String(std::str::from_utf8_unchecked(slice).to_owned());
-            },
-            ColumnType::Relation { table } => unsafe {
-                return Value::Int32(*(record_ptr.add(offset) as *const i32));
             },
         }
     }
@@ -251,9 +245,6 @@ impl Table {
                         std::str::from_utf8_unchecked(slice).to_owned(),
                     ));
                 },
-                ColumnType::Relation { table } => unsafe {
-                    columns.push(Value::Int32(*(records_ptr.add(offset) as *const i32)));
-                },
             }
         }
 
@@ -276,7 +267,6 @@ impl Table {
                         Value::Int64(value) => false,
                         Value::String(value) => false,
                         Value::Array(value) => false,
-                        Value::Relation(value) => false,
                     };
                 }
             }
@@ -345,7 +335,6 @@ impl Table {
                     Value::Int32(value) => print!("{:<12}", value),
                     Value::Int64(value) => print!("{:<12}", value),
                     Value::String(value) => print!("{:<12}", value),
-                    Value::Relation(value) => print!("{:<12}", value),
                     Value::Array(values) => print!("{:?}", values),
                 }
             }

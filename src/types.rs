@@ -41,7 +41,6 @@ pub enum ColumnType {
     Int32,
     Int64,
     String,
-    Relation { table: Arc<RefCell<Table>> },
 }
 
 #[derive(Debug, Clone)] // TODO
@@ -50,7 +49,6 @@ pub enum Value {
     Int32(i32),
     Int64(i64),
     String(String), // TODO: Convert to Rc so whole string is not copied
-    Relation(i32),
     Array(Vec<Vec<Value>>),
 }
 
