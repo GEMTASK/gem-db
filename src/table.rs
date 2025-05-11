@@ -64,6 +64,14 @@ impl Table {
         }
     }
 
+    fn memory_align(offset: usize, alignment: usize) -> usize {
+        return if offset % alignment == 0 {
+            0
+        } else {
+            alignment - offset % alignment
+        };
+    }
+
     pub fn add_fields(&mut self, fields: Vec<Field>) {
         let mut column_indexes: HashMap<String, usize> = HashMap::new();
         let mut column_offsets: Vec<usize> = vec![];
@@ -88,35 +96,35 @@ impl Table {
                 _ => {
                     match &column.field_type {
                         FieldType::Ulid => {
-                            offset += (16 - offset % 16) % 16;
+                            offset += Self::memory_align(offset, 16);
                             column_offsets.push(offset);
                             offset += 16;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
                         FieldType::Int32 => {
-                            offset += (4 - offset % 4) % 4;
+                            offset += Self::memory_align(offset, 4);
                             column_offsets.push(offset);
                             offset += 4;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
                         FieldType::Int64 => {
-                            offset += (8 - offset % 8) % 8;
+                            offset += Self::memory_align(offset, 8);
                             column_offsets.push(offset);
                             offset += 8;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
                         FieldType::String => {
-                            offset += (4 - offset % 4) % 4;
+                            offset += Self::memory_align(offset, 4);
                             column_offsets.push(offset);
                             offset += 4;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
                         FieldType::Relation { table } => {
-                            offset += (4 - offset % 4) % 4;
+                            offset += Self::memory_align(offset, 4);
                             column_offsets.push(offset);
                             offset += 4;
 
