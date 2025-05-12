@@ -40,12 +40,13 @@ fn main() {
 
     comments_table.borrow_mut().add_fields(vec![
         Field::new("id", FieldType::Int32),
-        Field::new(
-            "item_id",
-            FieldType::Relation {
-                table: items_table.clone(),
-            },
-        ),
+        Field::new("item_id", FieldType::Int32),
+        // Field::new(
+        //     "item_id",
+        //     FieldType::Relation {
+        //         table: items_table.clone(),
+        //     },
+        // ),
         Field::new("comment", FieldType::Int32),
     ]);
 
@@ -55,12 +56,14 @@ fn main() {
         Value::Int32(255),
         Value::String("ÀÀ".to_string()),
         Value::Int64(65535),
+        Value::Int32(255),
     ]);
 
     items_table.borrow_mut().insert(&[
         Value::Int32(10),
         Value::String("AA".to_string()),
         Value::Int64(20),
+        Value::Int32(30),
     ]);
 
     // println!("{:#?}", (*items_table.borrow_mut()));

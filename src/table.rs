@@ -17,9 +17,9 @@ pub struct Table {
     column_offsets: Vec<usize>,
     column_indexes: HashMap<String, usize>,
     row_width: usize,
-    records: Vec<u8>,
+    records: Vec<u32>,
     next_records_offset: usize,
-    storage: Vec<u8>,
+    storage: Vec<u16>,
     next_storage_offset: usize,
 }
 
@@ -57,9 +57,9 @@ impl Table {
             column_offsets: vec![],
             column_indexes: HashMap::new(),
             row_width: 0,
-            records: vec![0u8; 32],
+            records: vec![0u32; 32 / 4],
             next_records_offset: 0,
-            storage: vec![0u8; 16],
+            storage: vec![0u16; 16 / 2],
             next_storage_offset: 0,
         }
     }
@@ -117,9 +117,9 @@ impl Table {
                             column_indexes.insert(column.name.clone(), i);
                         }
                         FieldType::String => {
-                            offset += Self::memory_align(offset, 4);
+                            offset += Self::memory_align(offset, 2);
                             column_offsets.push(offset);
-                            offset += 4;
+                            offset += 2;
 
                             column_indexes.insert(column.name.clone(), i);
                         }
@@ -141,9 +141,13 @@ impl Table {
             }
         }
 
+        offset += Self::memory_align(offset, 16);
+
         self.column_indexes = column_indexes;
         self.column_offsets = column_offsets;
         self.row_width = offset;
+
+        println!("{:?} {:?}", self.column_offsets, self.row_width);
     }
 
     pub fn add_relations(&mut self, relations: Vec<Relation>) {
@@ -151,7 +155,7 @@ impl Table {
     }
 
     pub fn get_field<T: Copy>(&self, field_index: usize) -> T {
-        let ptr: *const u8 = self.records.as_ptr();
+        let ptr: *const u8 = self.records.as_ptr() as *const u8;
 
         unsafe {
             return *(ptr.add(self.column_offsets[field_index]) as *const T);
@@ -159,8 +163,8 @@ impl Table {
     }
 
     pub fn insert(&mut self, values: &[Value]) {
-        let records_ptr: *mut u8 = self.records.as_mut_ptr();
-        let storage_ptr: *mut u8 = self.storage.as_mut_ptr();
+        let records_ptr: *mut u8 = self.records.as_mut_ptr() as *mut u8;
+        let storage_ptr: *mut u8 = self.storage.as_mut_ptr() as *mut u8;
 
         for (i, field_offset) in self.column_offsets.iter().enumerate() {
             let offset = self.next_records_offset + field_offset;
@@ -176,12 +180,14 @@ impl Table {
                     *(records_ptr.add(offset) as *mut i64) = *value;
                 },
                 Value::String(value) => unsafe {
+                    self.next_storage_offset += Self::memory_align(self.next_storage_offset, 2);
+
                     *(records_ptr.add(offset) as *mut i32) = self.next_storage_offset as i32;
 
                     *(storage_ptr.add(self.next_storage_offset) as *mut i16) = value.len() as i16;
                     std::ptr::copy_nonoverlapping(
                         value.as_ptr(),
-                        storage_ptr.add(self.next_storage_offset + 2),
+                        storage_ptr.add(self.next_storage_offset + 4),
                         value.len(),
                     );
 
@@ -196,7 +202,7 @@ impl Table {
 
     pub fn extract_column(&self, record: &[u8], column_index: usize) -> Value {
         let record_ptr = record.as_ptr();
-        let storage_ptr: *const u8 = self.storage.as_ptr();
+        let storage_ptr: *const u8 = self.storage.as_ptr() as *const u8;
 
         let offset = self.column_offsets[column_index];
 
@@ -221,8 +227,8 @@ impl Table {
     }
 
     pub fn extract_record(&self, index: usize) -> Vec<Value> {
-        let records_ptr: *const u8 = self.records.as_ptr();
-        let storage_ptr: *const u8 = self.storage.as_ptr();
+        let records_ptr: *const u8 = self.records.as_ptr() as *const u8;
+        let storage_ptr: *const u8 = self.storage.as_ptr() as *const u8;
 
         let row_offset = self.row_width as usize * index;
 
@@ -245,6 +251,15 @@ impl Table {
                     let string: String;
 
                     let string_ptr = storage_ptr.add(*(records_ptr.add(offset)) as usize);
+
+                    println!(
+                        "> {:?} {:?} {:?} {:?} {:?}",
+                        offset,
+                        string_ptr,
+                        row_offset,
+                        *(records_ptr.add(offset)),
+                        self.column_offsets[i]
+                    );
                     let length = *(string_ptr as *const u16);
 
                     let slice = std::slice::from_raw_parts(string_ptr.add(2), length.into());
@@ -296,7 +311,7 @@ impl Table {
             }
 
             for relation in self.relations.iter() {
-                println!("{:#?}", relation);
+                // println!("{:#?}", relation);
 
                 let relation_query = Query::Eq(&relation.key, &columns[0]);
 
@@ -317,8 +332,8 @@ impl Table {
     }
 
     pub fn print(&self, values: Vec<Vec<Value>>) {
-        let records_ptr: *const u8 = self.records.as_ptr();
-        let storage_ptr: *const u8 = self.storage.as_ptr();
+        let records_ptr: *const u8 = self.records.as_ptr() as *const u8;
+        let storage_ptr: *const u8 = self.storage.as_ptr() as *const u8;
 
         for (i, field) in self.columns.iter().enumerate() {
             print!("{:<12}", field.name);
